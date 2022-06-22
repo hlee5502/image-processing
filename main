@@ -1,0 +1,138 @@
+
+/*
+Haejin Lee
+CS 220
+Homework 1: Image Processing
+*/
+
+/* 1. Write a function called removeBlueAndGreen that 
+takes an image as an argument and returns a copy of
+the input image, where each pixel is a shade of red. If
+the color of a pixel is (r, g, b) in the input image, its
+color in the output must be (r, 0, 0). */
+
+function removeBlueAndGreen(img) {
+  let red = img.copy(); // red is copy of im which will be returned
+  for (let i = 0; i < red.width; ++i){ // iterating through red's pixels by row
+    for (let j = 0; j < red.height; ++j){ // iterating through each pixel in row i
+        red.setPixel(i, j, [red.getPixel(i,j)[0], 0, 0]); // only takes first (red) parameter of pixel
+    }
+  }
+  return red; // returns the red image
+}
+
+/* 2. Write a function called shiftRGB that takes an image as an argument and returns a copy of the input
+image, where all the channels are shifted. If the color of a pixel is (r, g, b) in the input image, its color
+in the output must be (g, b, r).*/
+
+function shiftRGB(img) {
+  let newIm = img.copy(); // newIm is the image that will be returned
+  for (let i = 0; i < newIm.width; ++i){ // iterating through the image pixels by row
+    for (let j = 0; j < newIm.height; ++j){ // iterating through each pixel in row i
+        newIm.setPixel(i, j, [newIm.getPixel(i,j)[1], newIm.getPixel(i,j)[2], newIm.getPixel(i,j)[0]]); // changes (r,g,b) to (g,b,r)
+    }
+  }
+  return newIm; // returns the new image with (g,b,r) settings
+}
+
+/* Write a function called imageMap with the following type:
+imageMap(img: Image, func: (p: Pixel) => Pixel): Image
+The result must be a new image with the same dimensions as img. The value of each pixel in the new
+image should be the result of applying func to the corresponding pixel of img. Use either
+lib220.createImage or image.copy to create a new image or make a copy of the original.
+*/
+
+function imageMap(img, func) {
+  let newIm = img.copy();
+  for (let i = 0; i < newIm.width; ++i){ // iterating through the image pixels by row
+    for (let j = 0; j < newIm.height; ++j){ // iterating through each pixel in row i
+        newIm.setPixel(i,j,func(newIm.getPixel(i,j))); // set new pixel as result of applying func to the pixel at i, j
+    }
+  }
+  return newIm; // returns the new image with new settings applied by func
+}
+
+/*Write two functions mapToRed and mapToGBR that are equivalent to (i.e., behave exactly like)
+removeBlueAndGreen and shiftRGB but use imageMap.*/
+
+function mapToRed(img) {
+  return imageMap(img, p => [p[0], 0, 0] ); // calls image map to change image pixels from (r,g,b) to (r, 0, 0)
+}
+
+function mapToGBR(img) {
+  return imageMap(img, p => [p[1], p[2], p[0]] ); // calls image map to change image pixels from (r,g,b) to (g,b,r)
+}
+
+/* Write a function called increaseContrast that returns a copy of the input image where each color
+channel of a pixel is shifted towards the closest of the two limits 0 or 1. Specifically, the difference to
+the closest of the two limits (0 or 1) is decreased by 10% of its value. For example, 0.6 becomes 0.64
+and 0.3 becomes 0.27. A channel value of 0.5 is not changed (but, as you will see, images cannot have
+channel values of precisely 0.5).
+Use imageMap and map. Do not use loops.*/
+
+function increaseContrast(img) {
+  return imageMap(img, img => img.map(contrast)); // function will apply to each pixel of image and change its contrast
+}
+
+function contrast(p){
+  if (p > 0.5) { p += (0.1 * (1-p));} // if pixel value is closer to 1, add 10% difference
+  if (p < 0.5) { p -= (0.1*p);} // if pixel value is closer to 0, subtract 10% difference
+  if (p >= 1) { return 1;} // check upper bound
+  if (p <= 0) { return 0;} // check lower bound
+  return p;
+}
+
+// output images
+let robot = lib220.loadImageFromURL('https://people.cs.umass.edu/~joydeepb/robot.jpg');
+robot.show(); // original
+removeBlueAndGreen(robot).show(); // red
+shiftRGB(robot).show(); // gbr
+mapToRed(robot).show(); // red
+mapToGBR(robot).show(); // gbr
+increaseContrast(robot).show(); // increased contrast
+
+// tests from prompt
+test('removeBlueAndGreen function definition is correct', function() {
+  const white = lib220.createImage(10, 10, [1,1,1]);
+  removeBlueAndGreen(white).getPixel(0,0);
+  // Checks that code runs. Need to use assert to check properties.
+});
+
+test('No blue or green in removeBlueAndGreen result', function() {
+  // Create a test image, of size 10 pixels x 10 pixels, and set it to all white.
+  const white = lib220.createImage(10, 10, [1,1,1]);
+  // Get the result of the function.
+  const shouldBeRed = removeBlueAndGreen(white);
+  // Read the center pixel.
+  const pixelValue = shouldBeRed.getPixel(5, 5);
+  // The red channel should be unchanged.
+  assert(pixelValue[0] === 1);
+  // The green channel should be 0.
+  assert(pixelValue[1] === 0);
+  // The blue channel should be 0.
+  assert(pixelValue[2] === 0);
+});
+
+function pixelEq (p1, p2) {
+  const epsilon = 0.002; 
+  for (let i = 0; i < 3; ++i) {
+    if (Math.abs(p1[i] - p2[i]) > epsilon) {
+      return false;
+    }
+  }
+  return true;
+};
+
+test('Check pixel equality', function() {
+  const inputPixel = [0.5, 0.5, 0.5]
+  // Create a test image, of size 10 pixels x 10 pixels, and set it to the inputPixel
+  const image = lib220.createImage(10, 10, inputPixel);
+  // Process the image.
+  const outputImage = removeBlueAndGreen(image);
+  // Check the center pixel.
+  const centerPixel = outputImage.getPixel(5, 5);
+  assert(pixelEq(centerPixel, [0.5, 0, 0]));
+  // Check the top-left corner pixel.
+  const cornerPixel = outputImage.getPixel(0, 0);
+  assert(pixelEq(cornerPixel, [0.5, 0, 0]));
+});
