@@ -3,7 +3,7 @@ Haejin Lee
 Image Processing
 */
 
-/* 1. function removeBlueAndGreen takes an image as an argument and returns a copy of
+/* function removeBlueAndGreen takes an image as an argument and returns a copy of
 the input image, where each pixel is a shade of red. If
 the color of a pixel is (r, g, b) in the input image, its
 color in the outputi is (r, 0, 0). */
@@ -18,7 +18,7 @@ function removeBlueAndGreen(img) {
   return red; // returns the red image
 }
 
-/* 2. function shiftRGB takes an image as an argument and returns a copy of the input
+/* function shiftRGB takes an image as an argument and returns a copy of the input
 image, where all the channels are shifted. If the color of a pixel is (r, g, b) in the input image, its color
 in the output is (g, b, r).*/
 
@@ -78,9 +78,7 @@ function contrast(p){
 }
 
 
-/*
-Homework 2: More Image Processing with Higher-Order Functions
-*/
+// More Image Processing with Higher-Order Functions
 
 /* function imageMapXY has the following type:
     imageMapXY(img: Image, func: (img: Image, x: number, y: number) => Pixel): Image
@@ -174,8 +172,112 @@ function blackenLow(img){
   return imageMapXY(img, 
   (img, x, y) => img.getPixel(x,y).map(x => (x < 1/3)? 0: x));
 }
-// test cases:
 
+/* function blurPixel has following type: blurPixel(img: Image, x: number, y: number): Pixel
+The result is the blurred value of the pixel at coordinates (x, y). To do this, the red channel of the resulting pixel is
+the mean of the red channels of the pixels neighboring (x, y) and the (x, y) pixel itself. The blue
+and green channels are computed in the same way. Two distinct pixels are neighbors if both their
+x-coordinates and y-coordinates differ by at most 1 in absolute value.*/
+
+function blurPixel(img, x, y) {
+  function blurChannel(c) { // c is the rgb channel specified by 0, 1, or 2
+    let result = []; // initialize an array to store neighbors and compute mean of channel c
+    for (let i = x-1; i <= x+1; ++i) { // iterate through a square space with pixel at (x,y) as center
+      for(let j = y-1; j <= y+1; ++j) {
+        if( i >= 0 && i < img.width && j >= 0 && j < img.height) { // check bounds
+          result.push(img.getPixel(i,j)[c]); // add the c'th channel of pixel (i,j) to result
+        }
+      }
+    }
+    // compute the mean of pixel at (x,y) and its neighbors
+    return (result.reduce((x,y) => x+y, 0)) / result.length;
+  }
+  return [0,1,2].map(blurChannel); // map through rgb channels
+}
+
+/* function blurImage has the following type: blurImage(img: Image): Image
+The result is a new image that is the blurred version of the argument, with pixels obtained
+by applying blurPixel to each pixel of the input image. Uses higher order functions. */
+
+function blurImage(img) {
+  return imageMapXY(img, blurPixel);
+}
+
+/* function diffLeft has the following type: diffLeft(img: Image, x: number, y: number): Pixel
+which returns a grayscale pixel representing the intensity difference between pixel (x, y) and pixel
+(x-1, y) if the latter exists (otherwise, consider there is no intensity difference). Calculate the mean
+value of the three color channels for pixel (x, y) (call it m1) and the mean value of pixel (x-1, y)
+(call it m2). Set all three channels of the result to |m2-m1|.*/
+
+function diffLeft(img, x, y) {
+  if(x-1 >= 0) {
+    let m1 = img.getPixel(x,y).reduce((x,y) => x+y, 0) / 3;
+    let m2 = img.getPixel(x-1, y).reduce((x,y) => x+y, 0) / 3;
+    let result = Math.abs(m1-m2);
+    return [result,result,result];
+  }
+  return [0,0,0];
+}
+
+/* function highlightEdges takes an image as argument and returns a new
+grayscale version of the input image with highlighted edges. To do so, applies diffLeft to each
+pixel.*/
+
+function highlightEdges(img) {
+  return imageMapXY(img, diffLeft);
+}
+
+/* function reduceFunctions has the following type: reduceFunctions(fa: ((p: Pixel) => Pixel)[] ): ((x: Pixel) => Pixel)
+That is, reduceFunctions takes an array of functions, each taking a pixel and returning a pixel.
+It returns a single function (also from pixel to pixel) that composes all functions in the array, with
+the function at index 0 applied to the pixel first.*/
+function reduceFunctions(fa) {
+  return x => fa.reduce((acc, f) => f(acc), x);
+}
+
+/* function combineThree has the following type: combineThree(img: Image): Image
+The result is a new image where each pixel is transformed successively as done by the functions
+makeGrayish, blackenLow and shiftRGB, in this order. Uses imageMap and reduceFunctions.*/
+
+function isGrayish2(p){
+  let min = p.reduce((x,y) => Math.min(x,y), p[0]);
+  let max = p.reduce((x,y) => Math.max(x,y), p[0]);
+  return ((max-min) <= (1/3))? true: false;
+}
+// modified version of makeGrayish
+function makeGrayish2(p){
+  if (isGrayish2(p)) { return p;}
+  let avg = (p[0] + p[1] + p[2]) / 3;
+  return [avg, avg, avg];
+}
+
+// modified version of blackenLow
+function blackenLow2(p){
+  return p.map(x => (x < 1/3)? 0: x);
+}
+
+// modified version of shiftRGB
+function shiftRGB2(p) {
+  return [p[1], p[2], p[0]]; // returns the new image with (g,b,r) settings
+}
+
+function imageMap(img, func) {
+  let newIm = img.copy();
+  for (let i = 0; i < newIm.width; ++i){ // iterating through the image pixels by row
+    for (let j = 0; j < newIm.height; ++j){ // iterating through each pixel in row i
+        newIm.setPixel(i,j,func(newIm.getPixel(i,j))); // set new pixel as result of applying func to the pixel at i, j
+    }
+  }
+  return newIm; // returns the new image with new settings applied by func
+}
+
+function combineThree(img){
+  let arr = [makeGrayish2, blackenLow2, shiftRGB2];
+  return imageMap(img, reduceFunctions(arr));
+}
+
+
+// test cases:
 
 // output images
 let robot = lib220.loadImageFromURL('https://people.cs.umass.edu/~joydeepb/robot.jpg');
@@ -263,3 +365,120 @@ test('isGrayish works as it should because I am perfect and I can code like a gi
   assert(!isGrayish([0.34, 0, 0])); // not grayish
 });
 
+
+// basic test with robot
+
+url = 'https://people.cs.umass.edu/~joydeepb/robot.jpg';
+robot = lib220.loadImageFromURL(url);
+robot.show();
+
+// blur image
+blurImage(robot).show();
+
+// test for diffLeft/highlightEdges
+highlightEdges(robot).show();
+
+// test combineThree
+combineThree(robot).show();
+
+
+// Tests
+function pixelEq (p1, p2) {
+  const epsilon = 0.002; 
+  for (let i = 0; i < 3; ++i) {
+    if (Math.abs(p1[i] - p2[i]) > epsilon) {
+      return false;
+    }
+  }
+  return true;
+};
+
+test('blurPixel returns same pixel with uniform image', function() {
+  const image2 = lib220.createImage(3, 3, [1,1,1]);
+  assert(pixelEq(blurPixel(image2,1,1), [1, 1, 1]));
+
+  const image3 = lib220.createImage(3, 3, [0.5,0.5,0.5]);
+  assert(pixelEq(blurPixel(image3,1,1), [0.5, 0.5, 0.5]));
+});
+
+test('blurPixel returns correct pixel on edge cases', function(){
+  const image = lib220.createImage(3, 3, [0,0,0]);
+
+  image.setPixel(0,0,[0.1,0.1,0.1]);
+  image.setPixel(0,1,[0.2,0.2,0.2]);
+  image.setPixel(0,2,[0.3,0.3,0.3]);
+  image.setPixel(1,0,[0.4,0.4,0.4]);
+  image.setPixel(1,1,[0.5,0.5,0.5]);
+  image.setPixel(1,2,[0.6,0.6,0.6]);
+  image.setPixel(2,0,[0.7,0.7,0.7]);
+  image.setPixel(2,1,[0.8,0.8,0.8]);
+  image.setPixel(2,2,[0.9,0.9,0.9]);
+
+  assert(pixelEq(blurPixel(image,1,1), [0.5, 0.5, 0.5]));
+  // edge case 1
+  let avg = (0.1+0.2+0.4+0.5)/4
+  assert(pixelEq(blurPixel(image,0,0), [avg, avg, avg]));
+  // edge case 2
+  avg = (0.9+0.8+0.6+0.5)/4
+  assert(pixelEq(blurPixel(image,2,2), [avg, avg, avg]));
+  // another case
+  avg = (0.4+0.5+0.6+0.7+0.8+0.9)/6
+  assert(pixelEq(blurPixel(image,2,1), [avg, avg, avg]));
+});
+
+test('blurImage returns same image on image with uniform pixels', function() {
+  const image = lib220.createImage(3, 3, [0,0,0]);
+  for (let x = 0; x <= 2; ++x){
+    for (let y = 0; y <= 2; ++y){
+      assert(pixelEq(blurImage(image).getPixel(x,y), [0,0,0]));
+      }
+    }
+});
+
+test('diffLeft returns same pixel with uniform image', function() {
+  // no pixel difference
+  const image = lib220.createImage(3, 3, [0.2,0.1,0.8]);
+  // test when x = 1
+  assert(pixelEq(diffLeft(image,1,1), [0, 0, 0]));
+  // test when x = 0
+  assert(pixelEq(diffLeft(image,0,1), [0, 0, 0]));
+});
+
+test('diffLeft returns correct pixel', function() {
+  const image = lib220.createImage(3, 3, [0.2,0.1,0.8]);
+  // set pixel difference
+  image.setPixel(0,1,[0.5,0.2,0.9]);
+  let result = Math.abs( (0.5+0.2+0.9)/3 - (0.2+0.1+0.8)/3);
+  assert(pixelEq(diffLeft(image,1,1), [result, result, result]));
+});
+
+test('highlightEdges returns no difference with a uniform pixel image', function() {
+   const image = lib220.createImage(3, 3, [0.2,0.1,0.8]);
+   for (let x = 0; x <= 2; ++x){
+    for (let y = 0; y <= 2; ++y){
+      assert(pixelEq(highlightEdges(image).getPixel(x,y), [0,0,0]));
+      }
+    }
+});
+
+test('reduceFunctions returns correct pixel with one function applied', function() {
+  let g = p => [p[0], p[1], 0];
+  assert(pixelEq(reduceFunctions([g])([1,2,3]),[1,2,0]));
+});
+
+test('reduceFunctions returns same pixel with no functions as input', function() {
+  assert(pixelEq(reduceFunctions([])([1,2,3]),[1,2,3]));
+});
+
+test('combineThree returns an image with three transformations', function() {
+   let url2 = 'https://people.cs.umass.edu/~joydeepb/robot.jpg';
+   let robot2 = lib220.loadImageFromURL(url2);
+   let newIm = imageMap(imageMap(imageMap(robot2, makeGrayish2), blackenLow2), shiftRGB2);
+   assert(pixelEq(newIm.getPixel(1,1), combineThree(robot2).getPixel(1,1)));
+});
+
+test('combineThree returns a different image from original', function() {
+   let url = 'https://people.cs.umass.edu/~joydeepb/robot.jpg';
+   let robot = lib220.loadImageFromURL(url);
+   assert(!pixelEq(robot.getPixel(1,1), combineThree(robot).getPixel(1,1)));
+});
